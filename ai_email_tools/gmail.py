@@ -1,3 +1,6 @@
+import base64
+import logging
+import os
 import os.path
 
 from google.auth.transport.requests import Request
@@ -6,9 +9,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from email.mime.text import MIMEText
-import base64
-import os
+# setup logging so that it only logs from this app and not 
+# from imported modules
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 class Gmail:
     def __init__(self):
@@ -36,15 +42,14 @@ class Gmail:
             labels = results.get("labels", [])
 
             if not labels:
-                print("No labels found.")
+                logger.info("No labels found.")
                 return
 
-            print("Labels:")
             for label in labels:
-                print(label["name"])
+                logger.info(label["name"])
 
         except HttpError as error:
-            print(f"An error occurred: {error}")
+            logger.error(f"An error occurred: {error}")
 
     def get_messages(self, mailbox):
         try:
@@ -125,11 +130,15 @@ class Gmail:
 
     def decode_body(self, body):
         pass
-if __name__ == "__main__":
-    print ("Gmail")
+
+
+def main():    
     gmail = Gmail()
     gmail.authenticate()
     # gmail.list_labels()
     # gmail.get_messages("INBOX")
     message = gmail.read_message("18cef34ae274aac9")
-    print (message)
+    logger.info(message["subject"])
+    # log the keys in message
+    logger.info(message.keys())
+    logger.info(message["text/html"][:100])
