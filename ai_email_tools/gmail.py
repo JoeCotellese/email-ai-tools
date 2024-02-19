@@ -66,12 +66,28 @@ class Gmail:
                 print("No messages found.")
                 return
 
-            print("Messages:")
-            for message in messages:
-                print(message["id"])
-
         except HttpError as error:
             print(f"An error occurred: {error}")
+
+        return messages
+
+    def get_subject(self, message_id):
+        message = {}
+        try:
+            service = build("gmail", "v1", credentials=self.creds)
+            message = (
+                service.users()
+                .messages()
+                .get(userId="me", id=message_id)
+                .execute()
+            )
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+        
+        # add the subject line to the dictionary
+        for header in message["payload"]["headers"]:
+            if header["name"] == "Subject":
+                return header["value"]
 
     def read_message(self, message_id):
         # get the list of recipients for the message id
