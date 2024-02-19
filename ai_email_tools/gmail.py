@@ -1,23 +1,135 @@
-import imaplib
-import email
-from email.header import decode_header
+import os.path
 
-class EmailReader:
-    def __init__(self, username, password, server, port):
-        self.mail = imaplib.IMAP4_SSL(server, port)
-        self.mail.login(username, password)
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
-    def get_inbox(self):
-        self.mail.select("inbox")
-        result, data = self.mail.uid('search', None, "ALL")
-        email_ids = data[0].split()
-        email_ids = email_ids[::-1]  # newest emails first
+from email.mime.text import MIMEText
+import base64
+import os
 
-        for i in email_ids:
-            result, data = self.mail.uid('fetch', i, '(BODY[HEADER.FIELDS (SUBJECT)])')
-            raw_email = data[0][1].decode("utf-8")
-            email_message = email.message_from_string(raw_email)
-            print(decode_header(email_message['Subject'])[0])
+class Gmail:
+    def __init__(self):
+        self.scopes = ["https://www.googleapis.com/auth/gmail.readonly"]
+        self.creds = None
 
-    def close_connection(self):
-        self.mail.logout()
+    def authenticate(self):
+        if os.path.exists("token.json"):
+            self.creds = Credentials.from_authorized_user_file("token.json", self.scopes)
+
+        if not self.creds or not self.creds.valid:
+            if self.creds and self.creds.expired and self.creds.refresh_token:
+                self.creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file("credentials.json", self.scopes)
+                self.creds = flow.run_local_server(port=0)
+
+            with open("token.json", "w") as token:
+                token.write(self.creds.to_json())
+
+    def list_labels(self):
+        try:
+            service = build("gmail", "v1", credentials=self.creds)
+            results = service.users().labels().list(userId="me").execute()
+            labels = results.get("labels", [])
+
+            if not labels:
+                print("No labels found.")
+                return
+
+            print("Labels:")
+            for label in labels:
+                print(label["name"])
+
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+
+    def get_messages(self, mailbox):
+        try:
+            service = build("gmail", "v1", credentials=self.creds)
+            results = (
+                service.users()
+                .messages()
+                .list(userId="me", labelIds=mailbox)
+                .execute()
+            )
+            messages = results.get("messages", [])
+
+            if not messages:
+                print("No messages found.")
+                return
+
+            print("Messages:")
+            for message in messages:
+                print(message["id"])
+
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+
+    def read_message(self, message_id):
+        # get the list of recipients for the message id
+        # and store it into a "message" dictionary
+        message = {}
+        try:
+            service = build("gmail", "v1", credentials=self.creds)
+            message = (
+                service.users()
+                .messages()
+                .get(userId="me", id=message_id)
+                .execute()
+            )
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+        
+        # add the subject line to the dictionary
+        for header in message["payload"]["headers"]:
+            if header["name"] == "Subject":
+                message["subject"] = header["value"]
+                break
+                # Decode the email body
+    # Initialize attachment list
+        message['attachments'] = []
+
+        # Function to process parts
+        def process_parts(parts, container):
+            for part in parts:
+                part_body = part.get('body', {})
+                headers = part.get('headers', [])
+                part_headers = {header['name']: header['value'] for header in headers}
+
+                if part['mimeType'] == 'text/plain' or part['mimeType'] == 'text/html':
+                    body_data = part_body.get('data', '')
+                    body = base64.urlsafe_b64decode(body_data).decode('utf-8')
+                    container[part['mimeType']] = body
+                elif 'parts' in part:
+                    # Recursively process subparts
+                    process_parts(part['parts'], container)
+                elif part['mimeType'] == 'application/octet-stream':
+                    attachment_id = part_body.get('attachmentId')
+                    attachment = service.users().messages().attachments().get(userId='me', messageId=message_id, id=attachment_id).execute()
+                    attachment_data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
+                    filename = part_headers.get('filename', 'attachment')
+                    container['attachments'].append({'filename': filename, 'data': attachment_data})
+
+        # Check if the email is multipart
+        parts = message.get('payload', {}).get('parts', [])
+        email_content = {'text/plain': '', 'text/html': '', 'attachments': []}
+        process_parts(parts, email_content)
+
+        # Update message dictionary with processed content
+        message.update(email_content)
+
+        return message
+
+    def decode_body(self, body):
+        pass
+if __name__ == "__main__":
+    print ("Gmail")
+    gmail = Gmail()
+    gmail.authenticate()
+    # gmail.list_labels()
+    # gmail.get_messages("INBOX")
+    message = gmail.read_message("18cef34ae274aac9")
+    print (message)
