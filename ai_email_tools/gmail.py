@@ -87,7 +87,7 @@ class Gmail:
             )
         except HttpError as error:
             print(f"An error occurred: {error}")
-        
+       
         # add the subject line to the dictionary
         for header in message["payload"]["headers"]:
             if header["name"] == "Subject":
@@ -132,7 +132,7 @@ class Gmail:
         pass
 
 
-def main():    
+def main():   
     gmail = Gmail()
     gmail.authenticate()
     # gmail.list_labels()
