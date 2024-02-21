@@ -15,11 +15,20 @@ poetry install
 
 ## Gmail
 
-You need to setup a Google cloud project. 
-Documentation TK
+This tool assumes that email is coming from Gmail accounts.
+This requires you to setup a Google cloud project and download a credentials file.
+Google is your friend here, more documentation is to come.
 
 ## Usage
 
 ```shell
-poetry run python -m ai_email_tools
+poetry run aitools --help
 ```
+
+
+## TODO
+
+- I'd like to refactor the aitools.py module to inject differenet LLMS so I can experiments with local LLMs w/o having
+to keep changing the summarizer and classifier
+- Move the prompts into external config files
+
