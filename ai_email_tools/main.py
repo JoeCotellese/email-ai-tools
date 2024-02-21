@@ -54,7 +54,18 @@ def summarize(ctx, message_id):
 @main.command()
 @click.argument("message_id", type=str, required=True)
 @click.pass_obj
+def classify(ctx, message_id):
+    message = ctx.read_message(message_id)
+    ai = a.EmailAI(logger)
+    classification = ai.classify(message)
+    logger.info(classification)
+
+@main.command()
+@click.argument("message_id", type=str, required=True)
+@click.pass_obj
 def read(ctx, message_id):
     message = ctx.read_message(message_id)
+    message = ctx.clean_message(message)
     logger.info(message["subject"])
+    logger.info(message["text/html"])
     pass

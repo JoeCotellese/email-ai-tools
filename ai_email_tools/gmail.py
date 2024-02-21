@@ -3,6 +3,7 @@ import logging
 import os
 import os.path
 
+from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -141,20 +142,19 @@ class Gmail:
 
         # Update message dictionary with processed content
         message.update(email_content)
-
+        message = self.clean_message(message)
         return message
 
+
+    def clean_message(self, message):
+        # clean the HTML message by removing any style information
+        # within HTML tags
+        soup = BeautifulSoup(message["text/html"], "html.parser")
+        for tag in soup(["style"]):
+            tag.decompose()
+        message["text/html"] = soup.get_text()
+        return message
+
+        
     def decode_body(self, body):
         pass
-
-
-def main():   
-    gmail = Gmail()
-    gmail.authenticate()
-    # gmail.list_labels()
-    # gmail.get_messages("INBOX")
-    message = gmail.read_message("18cef34ae274aac9")
-    logger.info(message["subject"])
-    # log the keys in message
-    logger.info(message.keys())
-    logger.info(message["text/html"][:100])
