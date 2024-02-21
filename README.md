@@ -13,7 +13,13 @@ cd my_project
 poetry install
 ```
 
-## Gmail
+## Configuration
+
+### OpenAI
+
+Create a .env file and provide your OpenAI API key
+
+### Gmail
 
 This tool assumes that email is coming from Gmail accounts.
 This requires you to setup a Google cloud project and download a credentials file.
